@@ -57,6 +57,18 @@
       <version>2.2.3</version>
     </dependency>
     
+    <dependency>
+	  <groupId>com.typesafe.akka</groupId>
+	  <artifactId>akka-contrib_2.10</artifactId>
+	  <version>2.2.3</version>
+    </dependency> 
+ 
+    <dependency>
+	  <groupId>com.typesafe.akka</groupId>
+	  <artifactId>akka-remote_2.10</artifactId>
+	  <version>2.2.3</version>
+    </dependency>
+    
     <!-- gate  -->
     <dependency>
 	  <groupId>uk.ac.gate</groupId>
