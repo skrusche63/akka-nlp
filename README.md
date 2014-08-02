@@ -1,6 +1,9 @@
 ![Dr.Krusche & Partner PartG](https://raw.github.com/skrusche63/spark-elastic/master/images/dr-kruscheundpartner.png)
 
-## Text Processing in Scala with GATE and Akka
+## Named Entity Recognition (NER) in Scala with GATE and Akka
+
+This project implements an NER micro service that may be easily integrated in any Akka-based loose coupling environment to bring the power of GATE text processing to distributed data processing systems.
+
 
 [GATE](https://gate.ac.uk/) is a very popular library for text processing, and [Akka](http://akka.io/) is a fascinating toolkit and runtime for building highly concurrent, distributed, and fault tolerant event-driven applications.
 
@@ -82,6 +85,8 @@ A certain text artifact is then processed by GATE with just a few lines of Scala
   }
 
 ```
+
+GATE retrieves a text artifact and returns a sequence of annotations described as a `Seq[Map[String,String]]`, where the map represents a GATE feature map with `feature name -> feature value`.
 
 ### Actor Remoting
 
