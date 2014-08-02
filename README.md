@@ -94,6 +94,7 @@ GATE retrieves a text artifact and returns a sequence of annotations described a
 
 Akka is a toolkit for build concurrent scalable applications, using the [Actor Model](http://en.wikipedia.org/wiki/Actor_model). Akka comes with a feature called *Akka Remoting*, which easily enables to setup a communication between software components in a peer-to-peer fashion.
 
+Akka and Akka Remoting may therefore be used as an appropriate means to establish a communication between prior independent software components - easy and fast.
 
 
 The configuration file below illustrates how to configure Akka to easily build a server.
