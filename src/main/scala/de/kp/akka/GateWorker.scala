@@ -30,7 +30,7 @@ class GateWorker(gate:AnnieWrapper) extends Actor with ActorLogging {
     
     }
     
-    case _ => log.info("Unknown request.")
+    case _ => log.info("Unknown request")
   
   }
 
