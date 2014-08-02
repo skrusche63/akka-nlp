@@ -225,3 +225,47 @@ class GateWorker(gate:AnnieWrapper) extends Actor with ActorLogging {
 }
 ```
 
+#### Client
+
+To access the Master Actor from remote, is also just a few lines of Scala code:
+```
+class GateClient {
+
+  private val name = "gate-client"
+  private val conf = "client.conf"
+    
+  private val url = "akka.tcp://elastic-server@127.0.0.1:2600/user/gate-master"
+      
+  implicit val timeout = Timeout(5.seconds)
+    
+  private val system = ActorSystem(name, ConfigFactory.load(conf))
+  private val remote = system.actorSelection(url)
+
+  def send(req:Any):Future[Any] = ask(remote, req)    
+  def shutdown() = system.shutdown
+
+}
+```
+The client configuration `client.conf` may of course also be retrieved from an appropriate service registry.
+
+To be complete, the client-side configuration is given below:
+```
+akka {
+   actor {
+     provider = "akka.remote.RemoteActorRefProvider"
+   }
+   remote {
+     enabled-transports = ["akka.remote.netty.tcp"]
+     log-sent-messages = on
+     log-received-messages = on
+     netty.tcp {
+       hostname = "127.0.0.1"
+       port = 0
+     }
+   }
+}
+```
+
+The GateClient.scala as well as the associated configuration file is provided with this project for your convenience. Usually, the client is part of a different code base.
+
+
