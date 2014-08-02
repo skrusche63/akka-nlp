@@ -129,7 +129,10 @@ class GateService(conf:String, name:String) {
 }
 ```
 
-The configuration file below illustrates how to configure Akka to easily build a server.
+A simple configuration file `server.conf` enable the Actor to support remote access. In this project, the server configuration is specified by a plain text file. In a production environment, such a configuration will be retrieved from an appropriate service registry. 
+
+If you are interested in more configuration parameter, please have a look [here](http://doc.akka.io/docs/akka/snapshot/general/configuration.html#config-akka-remote).
+
 ```
 akka {
   actor {
