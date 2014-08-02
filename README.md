@@ -246,9 +246,7 @@ class GateClient {
 
 }
 ```
-The client configuration `client.conf` may of course also be retrieved from an appropriate service registry.
-
-To be complete, the client-side configuration is given below:
+The client configuration `client.conf` may of course also be retrieved from an appropriate service registry. To be complete, the client-side configuration is given below:
 ```
 akka {
    actor {
