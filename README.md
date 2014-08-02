@@ -97,6 +97,37 @@ Akka is a toolkit for build concurrent scalable applications, using the [Actor M
 Akka and Akka Remoting may therefore be used as an appropriate means to establish a communication between prior independent software components - easy and fast. The figure below illustrates the integration pattern provided with this project.
 ![Akka Client-Server Pattern](https://raw.githubusercontent.com/skrusche63/akka-nlp/master/images/Akka%20Client-Server%20Pattern.png)
 
+#### Server
+
+The code shows how an Akka Actor (here `GateMaster`) is configured to build a micro server and get accessible from remote.
+```
+object GateService {
+
+  def main(args: Array[String]) {
+    
+    val name:String = "gate-server"
+    val conf:String = "server.conf"
+
+    val server = new GateService(conf, name)
+    while (true) {}
+    
+    server.shutdown
+      
+  }
+
+}
+
+class GateService(conf:String, name:String) {
+
+  val system = ActorSystem(name, ConfigFactory.load(conf))
+  sys.addShutdownHook(system.shutdown)
+
+  val master = system.actorOf(Props[GateMaster], name="gate-master")
+
+  def shutdown = system.shutdown()
+  
+}
+```
 
 The configuration file below illustrates how to configure Akka to easily build a server.
 ```
