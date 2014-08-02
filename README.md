@@ -42,7 +42,46 @@ class AnnieWrapper(home:String) {
 
 ```
 
+A certain text artifact is then processed by GATE with just a few lines of Scala:
+```
+  def getAnnotations(text:String):Seq[Map[String,String]] = {
 
+    val document = Factory.newDocument(text)
+	annotateDocument(document) 
+
+	val annotations = document.getAnnotations()
+	val result = annotations.map(annotation => {
+	     
+	  val features = annotation.getFeatures()
+	  val map = features.map(feature => {
+	       
+	    val k = feature._1.toString
+	    val v = feature._2.toString
+	       
+	    (k,v)
+	       
+	  })
+	     
+	  map.toMap
+	     
+	}).toSeq
+
+	Factory.deleteResource(document)
+    result
+    
+  }
+
+  private def annotateDocument(document:Document):Document = {
+	   
+    corpus.add(document)
+    application.execute()
+      
+    corpus.clear()
+    document
+   
+  }
+
+```
 
 ### Actor Remoting
 
