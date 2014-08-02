@@ -90,7 +90,11 @@ A certain text artifact is then processed by GATE with just a few lines of Scala
 
 GATE retrieves a text artifact and returns a sequence of annotations described as a `Seq[Map[String,String]]`, where the map represents a GATE feature map with `feature name -> feature value`.
 
-### Actor Remoting
+### Akka Remoting
+
+Akka is a toolkit for build concurrent scalable applications, using the [Actor Model](http://en.wikipedia.org/wiki/Actor_model). Akka comes with a feature called *Akka Remoting*, which easily enables to setup a communication between software components in a peer-to-peer fashion.
+
+
 
 The configuration file below illustrates how to configure Akka to easily build a server.
 ```
