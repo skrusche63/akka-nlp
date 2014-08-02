@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
+
+    <title>Akka-nlp by skrusche63</title>
+  </head>
+
+  <body>
+
+    <header>
+      <div class="container">
+        <h1>Akka-nlp</h1>
+        <h2>An integration of the text mining system GATE with Akka</h2>
+
+        <section id="downloads">
+          <a href="https://github.com/skrusche63/akka-nlp/zipball/master" class="btn">Download as .zip</a>
+          <a href="https://github.com/skrusche63/akka-nlp/tarball/master" class="btn">Download as .tar.gz</a>
+          <a href="https://github.com/skrusche63/akka-nlp" class="btn btn-github"><span class="icon"></span>View on GitHub</a>
+        </section>
+      </div>
+    </header>
+
+    <div class="container">
+      <section id="main_content">
+        <p><img src="https://raw.github.com/skrusche63/spark-elastic/master/images/dr-kruscheundpartner.png" alt="Dr.Krusche &amp; Partner PartG"></p>
+
+<h2>
+<a name="named-entity-recognition-ner-in-scala" class="anchor" href="#named-entity-recognition-ner-in-scala"><span class="octicon octicon-link"></span></a>Named Entity Recognition (NER) in Scala</h2>
+
+<p>This project implements an NER micro service that may be easily integrated in any Akka-based loose coupling environment to bring the power of GATE text processing to distributed data processing systems.</p>
+
+<blockquote>
+<p>Keywords: Akka, ANNIE, GATE, Named Entity Recognition, Scala, Service Oriented Ennvironment, Text Processing</p>
+</blockquote>
+
+<p><a href="https://gate.ac.uk/">GATE</a> is a very popular library for text processing, and <a href="http://akka.io/">Akka</a> is a fascinating toolkit and runtime for building highly concurrent, distributed, and fault tolerant event-driven applications.</p>
+
+<blockquote>
+<p>Why not bring those tools together to build highly concurrent, reactive text engineering applications?</p>
+</blockquote>
+
+<h3>
+<a name="annie" class="anchor" href="#annie"><span class="octicon octicon-link"></span></a>ANNIE</h3>
+
+<p>GATE is distributed with an information extraction (IE) system called ANNIE, which is short for A Nearly-New IE system. ANNIE relies on finite state algorithms and the JAPE (Regular Expressions over Annotations) language, and consists of the following components:</p>
+
+<ul>
+<li>Unicode Tokenizer,</li>
+<li>Sentence Splitter,</li>
+<li>Part of Speech Tagger,</li>
+<li>Semantic Tagger,</li>
+<li>Gazetteer, and</li>
+</ul><p>more. All these components may be used to build sophisticated text processing pipelines. It is worth to mention, that the Gazetteer is an easy to use component for (supervised) Named Entity Recognition (NER): </p>
+
+<p>The Gazetter requires plain text files, where each text line represents a name, such as a name of a city, organisation or product. These text files are then compiled into finite state machines, prepared for fast reading.</p>
+
+<p>In this project, we wrap GATE to especially get access to ANNIE. The code example below illustrates how to configure and run GATE (or ANNIE) within a Scala application:</p>
+
+<pre><code>class AnnieWrapper(home:String) {
+
+  Gate.runInSandbox(true);
+  Gate.setGateHome(new File(home));
+
+  Gate.setPluginsHome(new File(home, "plugins"))
+  Gate.init();
+
+  val corpus = Factory.newCorpus("GATE Corpus")
+  /*
+   * This GATE wrapper requires a GATE application installed, e.g. ANNIE  
+   */      
+  val url = new URL("file:" + home + "/application.xgapp");
+  val application = PersistenceManager.loadObjectFromUrl(url).asInstanceOf[CorpusController]
+
+  application.setCorpus(corpus)
+
+</code></pre>
+
+<p>A certain text artifact is then processed by GATE with just a few lines of Scala:</p>
+
+<pre><code>  def getAnnotations(text:String):Seq[Map[String,String]] = {
+
+    val document = Factory.newDocument(text)
+    annotateDocument(document) 
+
+    val annotations = document.getAnnotations()
+    val result = annotations.map(annotation =&gt; {
+
+      val features = annotation.getFeatures()
+      val map = features.map(feature =&gt; {
+
+        val k = feature._1.toString
+        val v = feature._2.toString
+
+        (k,v)
+
+      })
+
+      map.toMap
+
+    }).toSeq
+
+    Factory.deleteResource(document)
+    result
+
+  }
+
+  private def annotateDocument(document:Document):Document = {
+
+    corpus.add(document)
+    application.execute()
+
+    corpus.clear()
+    document
+
+  }
+
+</code></pre>
+
+<p>GATE retrieves a text artifact and returns a sequence of annotations described as a <code>Seq[Map[String,String]]</code>, where the map represents a GATE feature map with <code>feature name -&gt; feature value</code>.</p>
+
+<h3>
+<a name="akka-remoting" class="anchor" href="#akka-remoting"><span class="octicon octicon-link"></span></a>Akka Remoting</h3>
+
+<p>Akka is a toolkit for build concurrent scalable applications, using the <a href="http://en.wikipedia.org/wiki/Actor_model">Actor Model</a>. Akka comes with a feature called <em>Akka Remoting</em>, which easily enables to setup a communication between software components in a peer-to-peer fashion.</p>
+
+<p>Akka and Akka Remoting may therefore be used as an appropriate means to establish a communication between prior independent software components - easy and fast. The figure below illustrates the integration pattern provided with this project.
+<img src="https://raw.githubusercontent.com/skrusche63/akka-nlp/master/images/Akka%20Client-Server%20Pattern.png" alt="Akka Client-Server Pattern"></p>
+
+<h4>
+<a name="server" class="anchor" href="#server"><span class="octicon octicon-link"></span></a>Server</h4>
+
+<p>The code shows how an Akka Actor (here <code>GateMaster</code>) is configured to build a micro server and get accessible from remote.</p>
+
+<pre><code>object GateService {
+
+  def main(args: Array[String]) {
+
+    val name:String = "gate-server"
+    val conf:String = "server.conf"
+
+    val server = new GateService(conf, name)
+    while (true) {}
+
+    server.shutdown
+
+  }
+
+}
+
+class GateService(conf:String, name:String) {
+
+  val system = ActorSystem(name, ConfigFactory.load(conf))
+  sys.addShutdownHook(system.shutdown)
+
+  val master = system.actorOf(Props[GateMaster], name="gate-master")
+
+  def shutdown = system.shutdown()
+
+}
+</code></pre>
+
+<p>A simple configuration file <code>server.conf</code> enable the Actor to support remote access. In this project, the server configuration is specified by a plain text file. In a production environment, such a configuration will be retrieved from an appropriate service registry. </p>
+
+<pre><code>akka {
+  actor {
+    provider = "akka.remote.RemoteActorRefProvider"
+  }
+  remote {
+    enabled-transports = ["akka.remote.netty.tcp"]
+    netty.tcp {
+      hostname = "127.0.0.1"
+      port = 2600
+    }
+    log-sent-messages = on
+    log-received-messages = on
+  }
+}
+</code></pre>
+
+<p>If you are interested in more configuration parameter, please have a look <a href="http://doc.akka.io/docs/akka/snapshot/general/configuration.html#config-akka-remote">here</a>.</p>
+
+<h4>
+<a name="master-actor" class="anchor" href="#master-actor"><span class="octicon octicon-link"></span></a>Master Actor</h4>
+
+<p>The main building block of the server-side functionality is the Master Actor (here <code>GateMaster</code>). It routers requests to a set of Worker Actors ((here <code>GateWorker</code>). In this project, a Round Robin routing logic is used.</p>
+
+<pre><code>class GateMaster extends Actor with ActorLogging {
+
+  /**
+   * Construct AnnieWrapper
+   */
+  val path = "application.conf"
+  val config = ConfigFactory.load(path)
+
+  val home = config.getConfig("gate").getString("home")
+  val gate = new AnnieWrapper(home)  
+
+  val routerCfg = config.getConfig("router")
+
+  val retries = routerCfg.getInt("retries")
+  val time = routerCfg.getInt("time")
+
+  val workers = routerCfg.getInt("workers")
+
+  override val supervisorStrategy = OneForOneStrategy(
+    maxNrOfRetries=retries,withinTimeRange = DurationInt(time).minutes) {
+    case _ : Exception =&gt; SupervisorStrategy.Restart
+  }
+
+  val router = context.actorOf(
+    Props(new GateWorker(gate)).withRouter(RoundRobinRouter(workers)), name="gate-router")
+
+  def receive = {
+
+    case req:String =&gt; {
+
+      implicit val ec = context.dispatcher
+      implicit val timeout:Timeout = 1.second
+
+      val origin = sender
+
+      val response = ask(router, req).mapTo[Seq[Map[String,String]]]
+      response.onSuccess {
+        case result =&gt; origin ! result       
+      }
+      response.onFailure {
+        case result =&gt; origin ! Seq.empty[Map[String,String]]         
+      }
+
+    }
+
+    case _ =&gt; log.info("Unknown request")
+
+  }
+
+}
+</code></pre>
+
+<h4>
+<a name="worker-actor" class="anchor" href="#worker-actor"><span class="octicon octicon-link"></span></a>Worker Actor</h4>
+
+<p>Finally, the Worker Actor is implemented to interact with GATE (or ANNIE) to assign annotations to a certain text artifact. The artifact is the request message (here <code>req</code>) sent from the Master to the Worker Actor.</p>
+
+<pre><code>class GateWorker(gate:AnnieWrapper) extends Actor with ActorLogging {
+
+  def receive = {
+
+    case req:String =&gt; {
+
+      sender ! gate.getAnnotations(req)
+
+    }
+
+    case _ =&gt; log.info("Unknown request")
+
+  }
+
+}
+</code></pre>
+
+<h4>
+<a name="client" class="anchor" href="#client"><span class="octicon octicon-link"></span></a>Client</h4>
+
+<p>To access the Master Actor from remote, is also just a few lines of Scala code:</p>
+
+<pre><code>class GateClient {
+
+  private val name = "gate-client"
+  private val conf = "client.conf"
+
+  private val url = "akka.tcp://elastic-server@127.0.0.1:2600/user/gate-master"
+
+  implicit val timeout = Timeout(5.seconds)
+
+  private val system = ActorSystem(name, ConfigFactory.load(conf))
+  private val remote = system.actorSelection(url)
+
+  def send(req:Any):Future[Any] = ask(remote, req)    
+  def shutdown() = system.shutdown
+
+}
+</code></pre>
+
+<p>The client configuration <code>client.conf</code> may of course also be retrieved from an appropriate service registry. To be complete, the client-side configuration is given below:</p>
+
+<pre><code>akka {
+   actor {
+     provider = "akka.remote.RemoteActorRefProvider"
+   }
+   remote {
+     enabled-transports = ["akka.remote.netty.tcp"]
+     log-sent-messages = on
+     log-received-messages = on
+     netty.tcp {
+       hostname = "127.0.0.1"
+       port = 0
+     }
+   }
+}
+</code></pre>
+
+<p>The GateClient.scala as well as the associated configuration file is provided with this project for your convenience. Usually, the client is part of a different code base.</p>
+      </section>
+    </div>
+
+    
+  </body>
+</html>
