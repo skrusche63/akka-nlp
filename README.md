@@ -204,3 +204,24 @@ class GateMaster extends Actor with ActorLogging {
 }
 ```
 
+#### Worker Actor
+
+Finally, the Worker Actor is implemented to interact with GATE (or ANNIE) to assign annotations to a certain text artifact. The artifact is the request message (here `req`) sent from the Master to the Worker Actor.
+```
+class GateWorker(gate:AnnieWrapper) extends Actor with ActorLogging {
+
+  def receive = {
+    
+    case req:String => {
+      
+      sender ! gate.getAnnotations(req)
+    
+    }
+    
+    case _ => log.info("Unknown request")
+  
+  }
+
+}
+```
+
