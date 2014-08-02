@@ -148,3 +148,59 @@ akka {
 ```
 If you are interested in more configuration parameter, please have a look [here](http://doc.akka.io/docs/akka/snapshot/general/configuration.html#config-akka-remote).
 
+#### Master Actor
+
+The main building block of the server-side functionality is the Master Actor (here `GateMaster`). It routers requests to a set of Worker Actors ((here `GateWorker`). In this project, a Round Robin routing logic is used.
+```
+class GateMaster extends Actor with ActorLogging {
+
+  /**
+   * Construct AnnieWrapper
+   */
+  val path = "application.conf"
+  val config = ConfigFactory.load(path)
+
+  val home = config.getConfig("gate").getString("home")
+  val gate = new AnnieWrapper(home)  
+  
+  val routerCfg = config.getConfig("router")
+  
+  val retries = routerCfg.getInt("retries")
+  val time = routerCfg.getInt("time")
+  
+  val workers = routerCfg.getInt("workers")
+  
+  override val supervisorStrategy = OneForOneStrategy(
+    maxNrOfRetries=retries,withinTimeRange = DurationInt(time).minutes) {
+    case _ : Exception => SupervisorStrategy.Restart
+  }
+
+  val router = context.actorOf(
+    Props(new GateWorker(gate)).withRouter(RoundRobinRouter(workers)), name="gate-router")
+    
+  def receive = {
+    
+    case req:String => {
+
+      implicit val ec = context.dispatcher
+      implicit val timeout:Timeout = 1.second
+
+	  val origin = sender
+
+	  val response = ask(router, req).mapTo[Seq[Map[String,String]]]
+      response.onSuccess {
+        case result => origin ! result       
+      }
+      response.onFailure {
+        case result => origin ! Seq.empty[Map[String,String]]	      
+	  }
+     
+    }
+    
+    case _ => log.info("Unknown request")
+  
+  }
+
+}
+```
+
