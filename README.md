@@ -1,8 +1,10 @@
 ![Dr.Krusche & Partner PartG](https://raw.github.com/skrusche63/spark-elastic/master/images/dr-kruscheundpartner.png)
 
-## Named Entity Recognition (NER) in Scala with GATE and Akka
+## Named Entity Recognition (NER) in Scala
 
 This project implements an NER micro service that may be easily integrated in any Akka-based loose coupling environment to bring the power of GATE text processing to distributed data processing systems.
+
+> Keywords: Akka, ANNIE, GATE, Named Entity Recognition, Scala, Service Oriented Ennvironment, Text Processing
 
 
 [GATE](https://gate.ac.uk/) is a very popular library for text processing, and [Akka](http://akka.io/) is a fascinating toolkit and runtime for building highly concurrent, distributed, and fault tolerant event-driven applications.
