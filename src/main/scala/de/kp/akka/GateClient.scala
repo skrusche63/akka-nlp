@@ -36,7 +36,7 @@ class GateClient {
   private val name = "gate-client"
   private val conf = "client.conf"
     
-  private val url = "akka.tcp://elastic-server@127.0.0.1:2600/user/gate-master"
+  private val url = "akka.tcp://gate-server@127.0.0.1:2600/user/gate-master"
       
   implicit val timeout = Timeout(5.seconds)
     
