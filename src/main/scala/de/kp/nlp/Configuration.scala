@@ -1,4 +1,4 @@
-package de.kp.akka
+package de.kp.nlp
 /* Copyright (c) 2014 Dr. Krusche & Partner PartG
 * 
 * This file is part of the Akka-NLP project
@@ -18,20 +18,40 @@ package de.kp.akka
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
-import akka.actor.{Actor,ActorLogging}
+import com.typesafe.config.ConfigFactory
 
-class GateWorker(gate:AnnieWrapper) extends Actor with ActorLogging {
-
-  def receive = {
-    
-    case req:String => {
-      
-      sender ! gate.getAnnotations(req)
-    
-    }
-    
-    case _ => log.info("Unknown request")
+object Configuration {
   
+    /* Load configuration for router */
+  val path = "application.conf"
+  val config = ConfigFactory.load(path)
+
+  def actor():Int = {
+  
+    val cfg = config.getConfig("actor")
+    val timeout = cfg.getInt("timeout")
+    
+    timeout
+    
+  }
+
+  def gate():String = {
+  
+    val cfg = config.getConfig("gate")
+    cfg.getString("home")
+    
+  }
+  
+  def router():(Int,Int,Int) = {
+  
+    val cfg = config.getConfig("router")
+  
+    val time    = cfg.getInt("time")
+    val retries = cfg.getInt("retries")  
+    val workers = cfg.getInt("workers")
+    
+    (time,retries,workers)
+
   }
 
 }

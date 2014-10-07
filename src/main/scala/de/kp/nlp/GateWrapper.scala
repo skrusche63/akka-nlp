@@ -1,4 +1,4 @@
-package de.kp.akka
+package de.kp.nlp
 /* Copyright (c) 2014 Dr. Krusche & Partner PartG
 * 
 * This file is part of the Akka-NLP project
@@ -19,6 +19,8 @@ package de.kp.akka
 */
 
 import gate._
+
+import gate.creole.ANNIEConstants
 import gate.util.persistence.PersistenceManager
 
 import java.io.File
@@ -26,13 +28,21 @@ import java.net.URL
 
 import scala.collection.JavaConversions._
 
-class AnnieWrapper(home:String) {
+class GateWrapper {
 
+  private val LANGUAGE_IDENTIFIER = "org.knallgrau.utils.textcat.LanguageIdentifier"
+  private val SENTENCE_SPLITTER   = "gate.opennlp.OpenNlpSentenceSplit"
+    
+  val home = Configuration.gate
+  
   Gate.runInSandbox(true);
   Gate.setGateHome(new File(home));
 	   
   Gate.setPluginsHome(new File(home, "plugins"))
-  Gate.init();
+  Gate.init()
+
+  Gate.getCreoleRegister.registerDirectories(new URL("file://" + Gate.getPluginsHome + "/Language_Identification"))
+  Gate.getCreoleRegister.registerDirectories(new URL("file://" + Gate.getPluginsHome + "/OpenNLP"))
 
   val corpus = Factory.newCorpus("GATE Corpus")
   /*
@@ -80,6 +90,55 @@ class AnnieWrapper(home:String) {
 	Factory.deleteResource(document)
     result
     
+  }
+
+  def getLanguage(text:String): String = {
+
+    val document = Factory.newDocument(text)
+    val analyzer = Factory.createResource(LANGUAGE_IDENTIFIER).asInstanceOf[LanguageAnalyser]
+
+    analyzer.setDocument(document)
+    analyzer.init()
+
+    analyzer.execute()
+
+    val language = document.getFeatures.get("lang").asInstanceOf[String]
+
+    Factory.deleteResource(document)
+    Factory.deleteResource(analyzer)
+
+    language
+    
+  }
+
+  def getSentences(text:String,lang:String):List[String] = {
+
+    val document = Factory.newDocument(text)
+    val splitter = Factory.createResource(SENTENCE_SPLITTER, Factory.newFeatureMap()).asInstanceOf[LanguageAnalyser]
+
+    splitter.setDocument(document)
+    splitter.init()
+
+    splitter.execute()
+
+    //val sentences =  getAnnotations(document)
+
+    val annotations = document.getAnnotations.get(ANNIEConstants.SENTENCE_ANNOTATION_TYPE)
+    val sentences = annotations.map(annotation => {
+      
+      val start = annotation.getStartNode().getOffset()
+      val end   = annotation.getEndNode().getOffset()
+
+      val sentence = Utils.stringFor(document, start, end)   
+      sentence
+      
+    })
+    
+    Factory.deleteResource(splitter)
+    Factory.deleteResource(document)
+
+    sentences.toList
+
   }
 
   private def annotateDocument(document:Document):Document = {

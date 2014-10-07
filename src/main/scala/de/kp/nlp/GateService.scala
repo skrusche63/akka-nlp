@@ -1,4 +1,4 @@
-package de.kp.akka
+package de.kp.nlp
 /* Copyright (c) 2014 Dr. Krusche & Partner PartG
 * 
 * This file is part of the Akka-NLP project
@@ -18,32 +18,33 @@ package de.kp.akka
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorSystem,Props}
 import com.typesafe.config.ConfigFactory
+import de.kp.nlp.actor.GateMaster
 
-import akka.pattern.ask
+object GateService {
 
-import akka.util.Timeout
-
-import scala.concurrent.duration._
-import scala.concurrent.duration.Duration._
-
-import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
-
-class GateClient {
-
-  private val name = "gate-client"
-  private val conf = "client.conf"
+  def main(args: Array[String]) {
     
-  private val url = "akka.tcp://gate-server@127.0.0.1:2600/user/gate-master"
+    val name:String = "gate-server"
+    val conf:String = "server.conf"
+
+    val server = new GateService(conf, name)
+    while (true) {}
+    
+    server.shutdown
       
-  implicit val timeout = Timeout(5.seconds)
-    
-  private val system = ActorSystem(name, ConfigFactory.load(conf))
-  private val remote = system.actorSelection(url)
+  }
 
-  def send(req:Any):Future[Any] = ask(remote, req)    
-  def shutdown() = system.shutdown
+}
 
+class GateService(conf:String, name:String) {
+
+  val system = ActorSystem(name, ConfigFactory.load(conf))
+  sys.addShutdownHook(system.shutdown)
+
+  val master = system.actorOf(Props[GateMaster], name="gate-master")
+
+  def shutdown = system.shutdown()
+  
 }

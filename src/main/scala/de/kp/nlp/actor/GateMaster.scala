@@ -1,4 +1,4 @@
-package de.kp.akka
+package de.kp.nlp.actor
 /* Copyright (c) 2014 Dr. Krusche & Partner PartG
 * 
 * This file is part of the Akka-NLP project
@@ -18,7 +18,7 @@ package de.kp.akka
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
-import akka.actor.{Actor,ActorLogging,ActorRef,Props}
+import akka.actor.{Actor, ActorLogging, Props}
 
 import akka.pattern.ask
 import akka.util.Timeout
@@ -26,27 +26,17 @@ import akka.util.Timeout
 import akka.actor.{OneForOneStrategy, SupervisorStrategy}
 import akka.routing.RoundRobinRouter
 
-import com.typesafe.config.ConfigFactory
-
 import scala.concurrent.duration.DurationInt
+import akka.util.Timeout.durationToTimeout
+
+import de.kp.nlp.{GateWrapper,Configuration}
 
 class GateMaster extends Actor with ActorLogging {
 
-  /**
-   * Construct AnnieWrapper
-   */
-  val path = "application.conf"
-  val config = ConfigFactory.load(path)
-
-  val home = config.getConfig("gate").getString("home")
-  val gate = new AnnieWrapper(home)  
+  val gate = new GateWrapper()  
   
-  val routerCfg = config.getConfig("router")
-  
-  val retries = routerCfg.getInt("retries")
-  val time = routerCfg.getInt("time")
-  
-  val workers = routerCfg.getInt("workers")
+  /* Load configuration for routers */
+  val (time,retries,workers) = Configuration.router   
   
   override val supervisorStrategy = OneForOneStrategy(maxNrOfRetries=retries,withinTimeRange = DurationInt(time).minutes) {
     case _ : Exception => SupervisorStrategy.Restart
@@ -59,7 +49,9 @@ class GateMaster extends Actor with ActorLogging {
     case req:String => {
 
       implicit val ec = context.dispatcher
-      implicit val timeout:Timeout = 1.second
+
+      val duration = Configuration.actor      
+      implicit val timeout:Timeout = DurationInt(duration).second
 
 	  val origin = sender
 
