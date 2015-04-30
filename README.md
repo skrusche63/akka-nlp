@@ -1,4 +1,4 @@
-![Dr.Krusche & Partner PartG](https://raw.github.com/skrusche63/spark-elastic/master/images/dr-kruscheundpartner.png)
+![Predictiveworks.](https://raw.githubusercontent.com/skrusche63/akka-nlp/master/images/predictiveworks.png)
 
 ## Named Entity Recognition (NER) in Scala
 

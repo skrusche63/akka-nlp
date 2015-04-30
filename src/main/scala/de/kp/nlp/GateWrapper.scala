@@ -27,10 +27,12 @@ import java.io.File
 import java.net.URL
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable.ListBuffer
 
 class GateWrapper {
 
   private val LANGUAGE_IDENTIFIER = "org.knallgrau.utils.textcat.LanguageIdentifier"
+  private val POS_TAGGER          = "gate.creole.POSTagger"
   private val SENTENCE_SPLITTER   = "gate.opennlp.OpenNlpSentenceSplit"
     
   val home = Configuration.gate
@@ -41,6 +43,7 @@ class GateWrapper {
   Gate.setPluginsHome(new File(home, "plugins"))
   Gate.init()
 
+  Gate.getCreoleRegister.registerDirectories(new URL("file://" + Gate.getPluginsHome + "/ANNIE"))
   Gate.getCreoleRegister.registerDirectories(new URL("file://" + Gate.getPluginsHome + "/Language_Identification"))
   Gate.getCreoleRegister.registerDirectories(new URL("file://" + Gate.getPluginsHome + "/OpenNLP"))
 
@@ -53,6 +56,30 @@ class GateWrapper {
 
   application.setCorpus(corpus)
 
+  /*
+
+  def extractAnnotationsFromDocument(document: Document): List[Map[String, String]] = {
+    val posTaggedAnnotations = new ListBuffer[Map[String, String]]()
+    val gateAnnotations = document.getAnnotations
+    val iterator = gateAnnotations.iterator()
+
+    while (iterator.hasNext) {
+      val annotationImpl: Annotation = iterator.next()
+      posTaggedAnnotations += Map(
+        "start" -> annotationImpl.getStartNode.getOffset.toString,
+        "end" -> annotationImpl.getEndNode.getOffset.toString,
+        "type" -> annotationImpl.getType,
+        "category" -> (annotationImpl.getFeatures.get("category") + ""),
+        "text" -> annotationImpl.getFeatures.get("string").toString,
+        "kind" -> annotationImpl.getFeatures.get("kind").toString)
+    }
+
+    posTaggedAnnotations.toList
+  }
+
+}
+   */
+  
   def getAnnotationsXml(text:String):String = {
 
 	val document = Factory.newDocument(text)
@@ -110,8 +137,59 @@ class GateWrapper {
     language
     
   }
+  
+  def getPOS(text:String,lang:String,sentences:List[Map[String,String]]):List[Map[String,String]] = {
 
-  def getSentences(text:String,lang:String):List[String] = {
+    val document = Factory.newDocument(text)
+    val tagger = Factory.createResource(POS_TAGGER, Factory.newFeatureMap()).asInstanceOf[LanguageAnalyser]
+
+    sentences.foreach(sentence => {
+      
+      val featureMap = Factory.newFeatureMap()
+    
+      featureMap.put("string", "")
+      featureMap.put("kind",   "")
+      
+      document.getAnnotations.add(sentence("start").toLong, sentence("end").toLong, sentence("type"), featureMap)
+    
+    })
+    
+    tagger.setDocument(document)
+    tagger.init()
+
+    tagger.execute()
+
+    val result = new ListBuffer[Map[String,String]]()
+
+    val annotations = document.getAnnotations
+    annotations.map(annotation => {
+      
+      val features = annotation.getFeatures
+      
+      result += Map(
+        "start" -> annotation.getStartNode.getOffset.toString,
+        "end"   -> annotation.getEndNode.getOffset.toString,
+        
+        "type"     -> annotation.getType,
+        "category" -> (features.get("category") + ""),
+        
+        "text" -> features.get("string").toString,
+        "kind" -> features.get("kind").toString
+        
+      )
+      
+    })
+   
+    
+    Factory.deleteResource(document)
+    Factory.deleteResource(tagger)
+
+    result.toList
+    
+
+  }
+
+  def getSentences(text:String,lang:String):List[Map[String,String]] = {
 
     val document = Factory.newDocument(text)
     val splitter = Factory.createResource(SENTENCE_SPLITTER, Factory.newFeatureMap()).asInstanceOf[LanguageAnalyser]
@@ -121,17 +199,19 @@ class GateWrapper {
 
     splitter.execute()
 
-    //val sentences =  getAnnotations(document)
-
     val annotations = document.getAnnotations.get(ANNIEConstants.SENTENCE_ANNOTATION_TYPE)
     val sentences = annotations.map(annotation => {
       
       val start = annotation.getStartNode().getOffset()
       val end   = annotation.getEndNode().getOffset()
 
-      val sentence = Utils.stringFor(document, start, end)   
-      sentence
-      
+      Map(
+        "start" -> start.toString,
+        "end"   -> end.toString,
+        "type"  -> annotation.getType(),
+        "text"  -> Utils.stringFor(document, start, end) 
+        )
+     
     })
     
     Factory.deleteResource(splitter)
@@ -141,7 +221,7 @@ class GateWrapper {
 
   }
 
-  private def annotateDocument(document:Document):Document = {
+  private def annotateDocument(document:gate.Document):gate.Document = {
 	   
     corpus.add(document)
     application.execute()
